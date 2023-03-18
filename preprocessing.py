@@ -1,3 +1,5 @@
+import pandas as pd
+from scipy.sparse import csr_matrix
 
 def leave_last_out(data, userid='userid', timeid='timestamp'):
     data_sorted = data.sort_values(timeid)
@@ -82,9 +84,6 @@ def generate_interactions_matrix(data, data_description, rebase_users=False):
     feedback = data[data_description['feedback']].values
     # construct rating matrix
     return csr_matrix((feedback, (user_idx, item_idx)), shape=(n_users, n_items))
-
-
-
 
 
 
