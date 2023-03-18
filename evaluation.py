@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 def compute_metrics(train, test, recs, top_N):
     result = {}
     test_recs = test.set_index(['user_id', 'item_id']).join(recs.set_index(['user_id', 'item_id']))
