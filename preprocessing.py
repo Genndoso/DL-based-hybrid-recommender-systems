@@ -1,6 +1,74 @@
 import pandas as pd
 from scipy.sparse import csr_matrix
 
+
+
+
+
+
+
+
+def preprocessing(interactions_df, users_df_ohe, items_df_ohe, cold_users_split=5, itemid='last_watch_dt'):
+    interactions_df = interactions_df[interactions_df.user_id.isin(users_df_ohe.user_id.unique())]
+    interactions_df['last_watch_dt_ts'] = interactions_df['last_watch_dt'].apply(lambda x: int(x.timestamp()))
+    num_interaction_pu = interactions_df.groupby('user_id')['item_id'].count().sort_values(ascending=False)
+    # get cold_users
+    cold_users = num_interaction_pu.loc[(num_interaction_pu < cold_users_split) & (num_interaction_pu > 2)].index
+
+    # warm_users_history
+    warm_users_history = interactions_df[~interactions_df.user_id.isin(cold_users)]
+
+    # cold_users_history
+    cold_users_history = interactions_df[interactions_df.user_id.isin(cold_users)]
+
+    # standard scenario train/holdout split
+    training, holdout = leave_last_out(warm_users_history, userid='user_id', timeid=itemid)
+
+    train_val, data_index_train = transform_indices(training, 'user_id', 'item_id')
+    holdout_val = reindex_data(holdout, data_index_train, fields="items")
+
+    # cold_start_scenario train/holdout split
+    training, holdout = leave_last_out(cold_users_history, userid='user_id', timeid=itemid)
+
+    cu_val, data_index_cu = transform_indices(cold_users_history, 'user_id', 'item_id')
+    cu_holdout = reindex_data(holdout, data_index_cu, fields="items")
+
+    data_description = dict(
+        users=data_index_train['users'].name,
+        items=data_index_train['items'].name,
+        feedback='watched_pct',
+        n_users_train=len(data_index_train['users']),
+        n_items=data_index_train['items'].shape[0],  # interactions_df.item_id.nunique(),
+        user_features=csr_matrix(users_df_ohe[users_df_ohe.user_id.isin(data_index_train['users'])].values),
+        item_features=csr_matrix(items_df_ohe[items_df_ohe.item_id.isin(data_index_train['items'])].values),
+        holdout_standard=holdout_val,
+        holdout_cs=cu_holdout,
+        cold_start_test=cu_val,
+    )
+
+    # get interactions matrix
+    train_matrix, iid_to_item_id, item_id_to_iid, uid_to_user_id, user_id_to_uid = \
+        get_interaction_matrix(train_val, n_items=data_description['n_items'])
+
+    train_matrix_indices = dict(
+        iid_to_itemid=iid_to_item_id,
+        itemid_to_iid=item_id_to_iid,
+        uid_to_user_id=uid_to_user_id,
+        user_id_to_uid=user_id_to_uid)
+
+    # cold users
+    cold_users_matrix, iid_to_item_id_cu, item_id_to_iid_cu, uid_to_user_id_cu, user_id_to_uid_cu = \
+        get_interaction_matrix(cold_users_history, n_items=data_description['n_items'])
+
+    cold_start_matrix_indices = dict(
+        iid_to_itemid=iid_to_item_id_cu,
+        itemid_to_iid=item_id_to_iid_cu,
+        uid_to_user_id=uid_to_user_id_cu,
+        user_id_to_uid=user_id_to_uid_cu)
+
+    return train_val, data_description, train_matrix, train_matrix_indices, cold_users_matrix, cold_start_matrix_indices
+
+
 def leave_last_out(data, userid='userid', timeid='timestamp'):
     data_sorted = data.sort_values(timeid)
     holdout = data_sorted.drop_duplicates(
@@ -139,3 +207,24 @@ def warm_start_timepoint_split(data, time_split_q=0.95):
         'userid in @holdout.userid'
     ).sort_values('userid')
     return training, testset, holdout
+
+
+def get_interaction_matrix(data, n_items, userid='user_id', itemid='item_id', rating='watched_pct'):
+    data['uid'] = data[userid].astype('category')
+    data['uid'] = data['uid'].cat.codes
+
+    data['iid'] = data[itemid].astype('category')
+    data['iid'] = data['iid'].cat.codes
+    interactions_vec = csr_matrix((data[rating],
+                                   (data['uid'], data['iid'])),
+                                  shape=(data.uid.nunique(), n_items))
+    # res = interactions_vec.sum(axis=1)
+    #     val = np.repeat(res, interactions_vec.getnnz(axis=1))
+    #     interactions_vec.data /= np.ravel(val)
+
+    iid_to_item_id = data[['iid', itemid]].drop_duplicates().set_index('iid').to_dict()[itemid]
+    item_id_to_iid = data[['iid', itemid]].drop_duplicates().set_index(itemid).to_dict()['iid']
+
+    uid_to_user_id = data[['uid', userid]].drop_duplicates().set_index('uid').to_dict()[userid]
+    user_id_to_uid = data[['uid', userid]].drop_duplicates().set_index(userid).to_dict()['uid']
+    return interactions_vec, iid_to_item_id, item_id_to_iid, uid_to_user_id, user_id_to_uid

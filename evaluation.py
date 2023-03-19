@@ -1,4 +1,32 @@
 import pandas as pd
+import numpy as np
+
+def topn_recommendations(scores, topn=10):
+    recommendations = np.apply_along_axis(topidx, 1, scores, topn)
+    return recommendations
+
+
+def topidx(a, topn):
+    parted = np.argpartition(a, -topn)[-topn:]
+    return parted[np.argsort(-a[parted])]
+
+
+def calculate_novelty(train_interactions, recommendations, top_n):
+    users = recommendations['user_id'].unique()
+    n_users = train_interactions['user_id'].nunique()
+    n_users_per_item = train_interactions.groupby('item_id')['user_id'].nunique()
+
+    recommendations = recommendations.loc[recommendations['rank'] <= top_n].copy()
+    recommendations['n_users_per_item'] = recommendations['item_id'].map(n_users_per_item)
+    recommendations['n_users_per_item'] = recommendations['n_users_per_item'].fillna(1)
+    recommendations['item_novelty'] = -np.log2(recommendations['n_users_per_item'] / n_users)
+
+    item_novelties = recommendations[['user_id', 'rank', 'item_novelty']]
+
+    miuf_at_k = item_novelties.loc[item_novelties['rank'] <= top_n, ['user_id', 'item_novelty']]
+    miuf_at_k = miuf_at_k.groupby('user_id').agg('mean').squeeze()
+
+    return miuf_at_k.reindex(users).mean()
 
 
 def compute_metrics(train, test, recs, top_N):
