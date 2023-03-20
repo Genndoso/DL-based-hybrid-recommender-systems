@@ -2,18 +2,12 @@ import pandas as pd
 from scipy.sparse import csr_matrix
 
 
-
-
-
-
-
-
 def preprocessing(interactions_df, users_df_ohe, items_df_ohe, cold_users_split=5, itemid='last_watch_dt'):
     interactions_df = interactions_df[interactions_df.user_id.isin(users_df_ohe.user_id.unique())]
     interactions_df['last_watch_dt_ts'] = interactions_df['last_watch_dt'].apply(lambda x: int(x.timestamp()))
     num_interaction_pu = interactions_df.groupby('user_id')['item_id'].count().sort_values(ascending=False)
     # get cold_users
-    cold_users = num_interaction_pu.loc[(num_interaction_pu < cold_users_split) & (num_interaction_pu > 2)].index
+    cold_users = num_interaction_pu.loc[(num_interaction_pu < 5) & (num_interaction_pu > 2)].index
 
     # warm_users_history
     warm_users_history = interactions_df[~interactions_df.user_id.isin(cold_users)]
@@ -39,8 +33,10 @@ def preprocessing(interactions_df, users_df_ohe, items_df_ohe, cold_users_split=
         feedback='watched_pct',
         n_users_train=len(data_index_train['users']),
         n_items=data_index_train['items'].shape[0],  # interactions_df.item_id.nunique(),
-        user_features=csr_matrix(users_df_ohe[users_df_ohe.user_id.isin(data_index_train['users'])].values),
-        item_features=csr_matrix(items_df_ohe[items_df_ohe.item_id.isin(data_index_train['items'])].values),
+        user_features=csr_matrix(
+            user_ohe_df[user_ohe_df.user_id.isin(data_index_train['users'])].drop(columns='user_id').values),
+        item_features=csr_matrix(
+            item_ohe_df[item_ohe_df.item_id.isin(data_index_train['items'])].drop(columns='item_id').values),
         holdout_standard=holdout_val,
         holdout_cs=cu_holdout,
         cold_start_test=cu_val,
