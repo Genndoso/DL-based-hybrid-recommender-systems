@@ -3,6 +3,7 @@ from scipy.sparse import csr_matrix
 
 
 def preprocessing(interactions_df, users_df_ohe, items_df_ohe, cold_users_split=5, itemid='last_watch_dt'):
+
     interactions_df = interactions_df[interactions_df.user_id.isin(users_df_ohe.user_id.unique())]
     interactions_df['last_watch_dt_ts'] = interactions_df['last_watch_dt'].apply(lambda x: int(x.timestamp()))
     num_interaction_pu = interactions_df.groupby('user_id')['item_id'].count().sort_values(ascending=False)

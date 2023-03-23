@@ -10,11 +10,11 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from sklearn.preprocessing import MinMaxScaler
 
-from data_prep import prepare_loader, generate_embeddings, \
+from .data_prep import prepare_loader, generate_embeddings, \
                         get_input_dims, timepoint_split, torchify, \
                         RatingDataset
-from train import train
-from deepfm import DeepFM
+from .train import train
+from .deepfm import DeepFM
 
 if __name__ == "__main__":
     target = 'watched_pct'
