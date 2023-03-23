@@ -2,8 +2,7 @@ from lightfm import LightFM
 import numpy as np
 
 
-
-def build_lfm_model(config, data, data_description, early_stop_config=None, iterator=None):
+def build_lfm_model(config, data, data_description, n_epochs = 20):
     """
     Builds a LightFM model using the given configuration, data and data description.
 
@@ -38,28 +37,69 @@ def build_lfm_model(config, data, data_description, early_stop_config=None, iter
     model.fit(data,
             user_features=data_description['user_features'],
             item_features=data_description['item_features'],
-            epochs=2,
+            epochs=n_epochs,
             verbose=True)
 
 
     return model
 
 
-def lightfm_scoring(model, data, data_description):
-    """
-    A standard scoring function adopted for use with LightFM in the item cold-start settings.
-    It returns a 2D item-user array (i.e., a transposed matrix of interactions) corresponding
-    to the predicted scores of user relevance to cold items.
-    """
+def lightfm_scoring(lfm, preds, data_description, users_to_val=10000):
     dtype = 'i4'
-    all_users = np.arange(data_description['n_users'], dtype=dtype)
-    test_items = data_description['cold_items'].astype(dtype)
+    all_users = np.arange(data_description['n_users_train'], dtype=dtype)
+    test_items = np.arange(data_description['n_items']).astype(dtype)
     item_index, user_index = np.meshgrid(test_items, all_users, copy=False)
+    all_items = np.arange(data_description['n_items'], dtype=dtype)
 
-    lfm_scores = model.predict(
-        user_index.ravel(),
-        item_index.ravel(),
-        item_features = data_description['item_features']
-    )
-    scores = lfm_scores.reshape(len(test_items), len(all_users), order='F')
-    return scores
+    for i in range(len(all_users)):
+        if i % 1000 == 0:
+            print(i)
+        if i == users_to_val:
+            break
+        score = lfm.predict(user_index[i].ravel(), item_ids=all_items.ravel(),
+                            user_features=data_description['user_features'],
+                            item_features=data_description['item_features'],
+                            num_threads=4)
+        scores = np.expand_dims(score, axis=0)
+        scores_topn = topn_recommendations(scores, topn)
+        preds[i, :] = scores_topn
+
+    hr_full = []
+    mrr_full = []
+    cov_full = []
+    ndcg_full = []
+    for i in holdout.user_id.sort_values():
+        if i % 1000 == 0:
+            print(i)
+        if i == users_to_val:
+            break
+        predictions = preds[i]
+
+        hr, mrr, cov, ndcg = user_evaluate(i, preds, holdout)
+        hr_full.append(hr)
+        mrr_full.append(mrr)
+        cov_full.append(cov)
+        ndcg_full.append(ndcg)
+
+    return np.array(hr_full), np.array(mrr_full), np.array(cov_full)
+
+
+def lightfm_eval(preds,holdout,data_description, users_to_eval = 10000):
+
+    hr_full = []
+    mrr_full = []
+    cov_full = []
+    ndcg_full = []
+    for count,i in enumerate(holdout.user_id.sort_values()):
+        if count % 100 == 0:
+            print(count,i)
+        if count == users_to_eval:
+            break
+       # predictions = preds[i]
+
+        hr, mrr, cov, ndcg = user_evaluate(i,preds, holdout, data_description)
+        hr_full.append(hr)
+        mrr_full.append(mrr)
+        cov_full.append(cov)
+        ndcg_full.append(ndcg)
+    return np.array(hr_full), np.array(mrr_full), np.array(cov_full),  np.array(ndcg_full)

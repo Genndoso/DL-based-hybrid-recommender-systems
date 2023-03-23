@@ -7,7 +7,7 @@ def preprocessing(interactions_df, users_df_ohe, items_df_ohe, cold_users_split=
     interactions_df['last_watch_dt_ts'] = interactions_df['last_watch_dt'].apply(lambda x: int(x.timestamp()))
     num_interaction_pu = interactions_df.groupby('user_id')['item_id'].count().sort_values(ascending=False)
     # get cold_users
-    cold_users = num_interaction_pu.loc[(num_interaction_pu < 5) & (num_interaction_pu > 2)].index
+    cold_users = num_interaction_pu.loc[(num_interaction_pu < cold_users_split) & (num_interaction_pu > 2)].index
 
     # warm_users_history
     warm_users_history = interactions_df[~interactions_df.user_id.isin(cold_users)]
@@ -24,7 +24,7 @@ def preprocessing(interactions_df, users_df_ohe, items_df_ohe, cold_users_split=
     # cold_start_scenario train/holdout split
     training, holdout = leave_last_out(cold_users_history, userid='user_id', timeid=itemid)
 
-    cu_val, data_index_cu = transform_indices(cold_users_history, 'user_id', 'item_id')
+    cu_val, data_index_cu = transform_indices(training, 'user_id', 'item_id')
     cu_holdout = reindex_data(holdout, data_index_cu, fields="items")
 
     data_description = dict(
@@ -113,7 +113,6 @@ def reindex_data(data, data_index, fields=None):
         data = data.assign(**{f'{entity_name}': new_index}) # makes a copy of dataset!
     return data
 
-
 # generate training matrix
 def generate_interactions_matrix(data, data_description, rebase_users=False):
     '''
@@ -148,7 +147,6 @@ def generate_interactions_matrix(data, data_description, rebase_users=False):
     feedback = data[data_description['feedback']].values
     # construct rating matrix
     return csr_matrix((feedback, (user_idx, item_idx)), shape=(n_users, n_items))
-
 
 
 def warm_start_timepoint_split(data, time_split_q=0.95):

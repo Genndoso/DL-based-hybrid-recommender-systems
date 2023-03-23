@@ -9,10 +9,10 @@ from tqdm import tqdm
 
 
 def load_csv():
-    iteraction_df = pd.read_csv('./dataset/interactions_processed.csv')
+    interaction_df = pd.read_csv('./dataset/interactions_processed.csv')
     item_df = pd.read_csv('./dataset/items_processed.csv')
     user_df = pd.read_csv('./dataset/users_processed.csv')
-    return iteraction_df, item_df, user_df
+    return interaction_df, item_df, user_df
 
 def get_data_df(iteraction_df, item_df, user_df):
     """ combine interaction, items and users"""
