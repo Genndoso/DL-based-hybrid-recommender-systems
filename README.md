@@ -1,6 +1,6 @@
-## Comparison study of DeepFM Hybrid vs. baseline
+## Comparison study of DeepFM Hybrid vs. baselines
 
-In this project, we implemented several baselines (LightFM, DSSR, and SVD) and DeepFM model. We trained our models on the [KION dataset](https://www.kaggle.com/datasets/asenin/kion-dataset). 
+In this project, we implemented several baselines (LightFM, DSSM, and SVD) and DeepFM model. We trained our models on the [KION dataset](https://www.kaggle.com/datasets/asenin/kion-dataset). 
 
 ### Dataset Preprocessing:
 We performed some preliminary preprocesing on the mentioned dataset. The notebook `data_preprocessing.ipynb` was used to procecss the data. After running this notebook, there should be 3 created `csv` files for `items`, `users`, and `interactions` respectively. These steps are enough to run our baselines (LightFM, DSSR, SVD)
