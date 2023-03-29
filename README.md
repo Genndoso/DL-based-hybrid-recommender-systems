@@ -3,7 +3,7 @@
 In this project, we implemented several baselines (LightFM, DSSM, and SVD) and DeepFM model. We trained our models on the [KION dataset](https://www.kaggle.com/datasets/asenin/kion-dataset). 
 
 ### Dataset Preprocessing:
-We performed some preliminary preprocesing on the mentioned dataset. The notebook `data_preprocessing.ipynb` was used to procecss the data. After running this notebook, there should be 3 created `csv` files for `items`, `users`, and `interactions` respectively. These steps are enough to run our baselines (LightFM, DSSR, SVD)
+We performed some preliminary preprocesing on the mentioned dataset. The notebook `data_preprocessing.ipynb` was used to procecss the data. After running this notebook, there should be 3 created `csv` files for `items`, `users`, and `interactions` respectively. These steps are enough to run our baselines (LightFM, DSSM, SVD)
 
 For the data prepoccessing for DeepFM, the function `preproc_deep_fm` in `utils/preprocessing.py` were used. After running this function, it will combine the 3 `csv` files above to create 1 big `csv`. Alternatively, the preproccessed data can be downloaded [here](https://drive.google.com/file/d/15zfmD-qvnYPSFwPJwHUmvhQX62CDN00O/view?usp=sharing).
 
